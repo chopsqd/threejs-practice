@@ -2,10 +2,11 @@ import React, {useState} from 'react';
 import {AnimatePresence, motion} from 'framer-motion';
 
 import state from '../store';
-import {EditorTabs, FilterTabs} from '../config/constants';
+import {DecalTypes, EditorTabs, FilterTabs} from '../config/constants';
 import {fadeAnimation, slideAnimation} from '../config/motion';
 import {useSnapshot} from "valtio";
 import {AIPicker, ColorPicker, CustomButton, FilePicker, Tab} from "../components";
+import {reader} from "../config/helpers.js";
 
 const Customizer = () => {
     const snap = useSnapshot(state)
@@ -26,12 +27,89 @@ const Customizer = () => {
             case 'colorpicker':
                 return <ColorPicker />
             case 'filepicker':
-                return <FilePicker />
+                return <FilePicker
+                    file={file}
+                    setFile={setFile}
+                    readFile={readFile}
+                />
             case 'aipicker':
-                return <AIPicker />
+                return <AIPicker
+                    prompt={prompt}
+                    setPrompt={setPrompt}
+                    generatingImg={generatingImg}
+                    handleSubmit={handleSubmit}
+                />
             default:
                 return null
         }
+    }
+
+    const handleSubmit = async type => {
+        if(!prompt) return alert("Please enter a prompt!")
+
+        try {
+            setGeneratingImg(true)
+
+            // Call backend to generate an AI image
+            const response = await fetch('http://localhost:8080/api/v1/dalle', {
+                method: "POST",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    prompt
+                })
+            })
+
+            const data = response.json()
+
+            handleDecals(type, `data:image/png;base64,${data.photo}`)
+        } catch (error) {
+            alert(error)
+        } finally {
+            setGeneratingImg(false)
+            setActiveEditorTab("")
+        }
+    }
+
+    const handleDecals = (type, result) => {
+        const decalType = DecalTypes[type]
+
+        state[decalType.stateProperty] = result
+
+        if(!activeFilterTab[decalType.filterTab]) {
+            handleActiveFilterTab(decalType.filterTab)
+        }
+    }
+
+    const handleActiveFilterTab = tabName => {
+        switch (tabName) {
+            case 'logoShirt':
+                state.isLogoTexture = !activeFilterTab[tabName]
+                break
+            case 'stylishShirt':
+                state.isFullTexture = !activeFilterTab[tabName]
+                break
+            default:
+                state.isLogoTexture = true
+                state.isFullTexture = false
+        }
+
+        // After setting the state, activeFilterTab is updated
+        setActiveFilterTab(prevState => {
+            return {
+                ...prevState,
+                [tabName]: !prevState[tabName]
+            }
+        })
+    }
+
+    const readFile = type => {
+        reader(file)
+            .then(result => {
+                handleDecals(type, result)
+                setActiveEditorTab("")
+            })
     }
 
     return (
@@ -79,8 +157,8 @@ const Customizer = () => {
                                 key={tab.name}
                                 tab={tab}
                                 isFilterTab
-                                isActiveTab
-                                handleClick={() => {}}
+                                isActiveTab={activeFilterTab[tab.name]}
+                                handleClick={() => handleActiveFilterTab(tab.name)}
                             />
                         )}
                     </motion.div>
