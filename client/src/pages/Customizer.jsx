@@ -1,17 +1,38 @@
-import React from 'react';
+import React, {useState} from 'react';
 import {AnimatePresence, motion} from 'framer-motion';
 
 import state from '../store';
-import {download} from '../assets';
-import config from '../config/config';
-import {downloadCanvasToImage, reader} from '../config/helpers';
-import {EditorTabs, FilterTabs, DecalTypes} from '../config/constants';
+import {EditorTabs, FilterTabs} from '../config/constants';
 import {fadeAnimation, slideAnimation} from '../config/motion';
 import {useSnapshot} from "valtio";
-import {CustomButton, Tab} from "../components";
+import {AIPicker, ColorPicker, CustomButton, FilePicker, Tab} from "../components";
 
 const Customizer = () => {
     const snap = useSnapshot(state)
+
+    const [file, setFile] = useState('')
+    const [prompt, setPrompt] = useState('')
+    const [generatingImg, setGeneratingImg] = useState(false)
+
+    const [activeEditorTab, setActiveEditorTab] = useState('')
+    const [activeFilterTab, setActiveFilterTab] = useState({
+        logoShirt: true,
+        stylishShirt: false
+    })
+
+    // Show tab content depending on the active tab
+    const generateTabContent = () => {
+        switch (activeEditorTab) {
+            case 'colorpicker':
+                return <ColorPicker />
+            case 'filepicker':
+                return <FilePicker />
+            case 'aipicker':
+                return <AIPicker />
+            default:
+                return null
+        }
+    }
 
     return (
         <AnimatePresence>
@@ -28,9 +49,11 @@ const Customizer = () => {
                                     <Tab
                                         key={tab.name}
                                         tab={tab}
-                                        handleClick={() => {}}
+                                        handleClick={() => setActiveEditorTab(tab.name)}
                                     />
                                 )}
+
+                                {generateTabContent()}
                             </div>
                         </div>
                     </motion.div>
